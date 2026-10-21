@@ -2,3 +2,5 @@
 .venv/
 *.pyc
 *.pyc
+*.pyc
+/scraper/__pycache__

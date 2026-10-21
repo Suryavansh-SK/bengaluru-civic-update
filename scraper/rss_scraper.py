@@ -18,6 +18,8 @@ from dotenv import load_dotenv
 import feedparser
 import json
 from bs4 import BeautifulSoup
+from pyairtable import Api
+from datetime import datetime
 
 # Load the secure variables from your .env file ->
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))         # Find the absolute path to the directory where this script lives
@@ -26,6 +28,7 @@ load_dotenv(os.path.join(SCRIPT_DIR, '.env'))                   # Loading this b
 from context_filter import get_disruption_context, DISRUPTION_KEYWORDS, DETERMINISTIC_KEYWORDS               # Importing custom module after loading the environement variable (.env file) because our context filter relies on those variables.
 
 master_articles_list = []
+performance_log_list = []
 
 # 1. Defining the list RSS source URLs to be parsed
 feed_sources = [
@@ -85,17 +88,40 @@ for source in feed_sources:                                                   #l
             # 2.2.1 Call the LLM context module
             context = get_disruption_context(entry.title, entry.description)
 
-            # Extract the reasoning from the LLM's response
-            reasoning = context.get("reasoning", "No reasoning provided.")
+            # 2.2.3 Saving the performance log inside this context evaluation block to prevent UnboundLocalError.
+            # Extract stats from context for terminal prints and logging
+
+            groq_reasoning = context.get("groq_reasoning", "N/A")
+            gemini_reasoning = context.get("gemini_reasoning", "N/A")
+            groq_confidence=float(context.get("groq_confidence", 0.0))
+            gemini_confidence=float(context.get("gemini_confidence", 0.0))
+            
+            # Inserting Context Filter's performance log into Airtable for future analysis and improvement of the model
+
+            performance_log_list.append({
+                "Article Title": entry.title,
+                "Article Link": entry.link,
+                "Category": context.get("category", "Update"),
+                "Is Disruption": bool(context.get("is_disruption")),
+                "Groq Confidence": groq_confidence,                             
+                "Gemini Confidence": gemini_confidence,                         
+                "Groq Reasoning": context.get("groq_reasoning", "N/A"),
+                "Gemini Reasoning": context.get("gemini_reasoning", "N/A"),
+                "Routed to Gemini": bool(context.get("routed_to_gemini", False)),
+                "Fallback to Groq": bool(context.get("fallback_to_groq", False)),
+                "Executed at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")             # Formatted with explicit IST offset (+05:30) so Airtable interprets the local time accurately
+            })
 
             if context.get("is_disruption") == True:
                 print(f"ACCEPTED ({context['category']}): {entry.title}\n"
-                      f"Reasoning: {reasoning}")
-                article_data["category"] = context.get("category", "Update")                # Store the category
+                      f"Groq Reasoning: {groq_reasoning}\n"
+                      f"Gemini Reasoning: {gemini_reasoning}")
+                article_data["category"] = context.get("category", "Update")                # Store the category. Default to "Update" if the key is missing.
                 master_articles_list.append(article_data)
             else:
                 print(f"REJECTED (Failed Context): {article_data['title']}\n"
-                      f"Reasoning: {reasoning}")
+                      f"Groq Reasoning: {groq_reasoning}\n"
+                      f"Gemini Reasoning: {gemini_reasoning}")
         else:
             print(f"\nSKIPPED (Failed Keyword Pre-filter): {article_data['title']}")
             
@@ -154,3 +180,20 @@ finally:
     if connection:
         connection.close()
         print("Database connection closed.")
+
+# 5. Exporting the performance log to Airtable
+
+if performance_log_list:
+    try:
+        print("Connecting to Airtable...")
+        airtable_api = Api(os.environ.get("AIRTABLE_API_KEY"))
+        table = airtable_api.table(
+            os.environ.get("AIRTABLE_BASE_ID"),
+            os.environ.get("AIRTABLE_TABLE_NAME")
+        )
+        
+        # Batch insert list of records directly matching column headers
+        table.batch_create(performance_log_list)
+        print(f"Successfully pushed {len(performance_log_list)} logs to Airtable!")
+    except Exception as airtable_error:
+        print(f"Failed to record logs to Airtable: {airtable_error}")

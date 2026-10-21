@@ -1,26 +1,28 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { Providers } from "./providers";
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import Header from '@/components/Header';
 
-const inter = Inter({ subsets: ["latin"] });
+// Initialize the Inter font
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "BLR Civic Update",
-  description: "Live civic updates for Bengaluru",
+  title: 'Bengaluru Civic Update',
+  description: 'Civic disrption updates for Bengaluru.',
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} bg-white dark:bg-black min-h-screen`}>
-        <Providers>
+    <html lang="en">
+      <body className={`${inter.className} bg-black text-gray-200 min-h-screen flex flex-col`}>
+        <Header />
+        <main className="flex-grow">
           {children}
-        </Providers>
+        </main>
       </body>
     </html>
   );

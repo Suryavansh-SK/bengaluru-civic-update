@@ -19,7 +19,7 @@ export default function Changelogs() {
             </svg>
             Changelog
           </h1>
-          <p className="text-gray-400 mt-2 ml-11">What's new in Bengaluru Civic Updates</p>
+          <p className="text-gray-400 mt-2 ml-11">What's new in Bengaluru Civic Update</p>
         </div>
 
         {/* Timeline Container */}
