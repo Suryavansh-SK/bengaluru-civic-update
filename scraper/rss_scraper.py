@@ -108,8 +108,7 @@ for source in feed_sources:                                                   #l
                 "Groq Reasoning": context.get("groq_reasoning", "N/A"),
                 "Gemini Reasoning": context.get("gemini_reasoning", "N/A"),
                 "Routed to Gemini": bool(context.get("routed_to_gemini", False)),
-                "Fallback to Groq": bool(context.get("fallback_to_groq", False)),
-                "Executed at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")             # Formatted with explicit IST offset (+05:30) so Airtable interprets the local time accurately
+                "Fallback to Groq": bool(context.get("fallback_to_groq", False))
             })
 
             if context.get("is_disruption") == True:
